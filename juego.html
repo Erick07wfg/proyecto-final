@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Caída Libre - DEV BUILD</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+html,body{height:100%;margin:0;background:#111;overflow:hidden;font-family:monospace}
+#wrap{height:100%;display:flex;justify-content:center}
+canvas{height:100%;width:100%;max-width:520px;display:block;touch-action:none;user-select:none}
+</style></head><body>
+<div id="wrap"><canvas id="c"></canvas></div>
+<script>
+const Q=[["Toda función es una relación, pero no toda relación es una función",1],["Una función asigna a cada valor del dominio exactamente un valor de salida",1],["Una función puede dar dos valores distintos de y para un mismo valor de x",0],["La prueba de la recta vertical sirve para saber si una gráfica representa una función",1],["La prueba de la recta horizontal sirve para saber si una función es inyectiva",1],["Una función par es simétrica respecto al origen",0],["Una función impar es simétrica respecto al origen",1],["La composición de funciones es conmutativa",0],["Si una función es inyectiva, admite función inversa sobre su imagen",1],["La gráfica de f⁻¹ es la reflexión de la gráfica de f respecto a la recta y = x",1],["f⁻¹(f(x)) = x para todo x del dominio de f, si f⁻¹ existe",1],["El rango de una función es el conjunto de valores de entrada permitidos",0],["La función logarítmica es la inversa de la función exponencial",1],["El dominio de la función logarítmica son todos los números reales",0],["La función exponencial aˣ, con a > 0, nunca toma el valor 0",1],["Una asíntota es una recta a la que la gráfica se aproxima cada vez más",1],["Una función racional puede tener asíntotas verticales donde el denominador se anula",1],["Todo polinomio de grado n tiene exactamente n raíces reales",0],["Un polinomio de grado n tiene n raíces complejas, contando multiplicidad",1],["Un polinomio de grado impar siempre tiene al menos una raíz real",1],["El periodo fundamental de sen(x) y cos(x) es π",0],["Las funciones seno y coseno son periódicas",1],["Un radián es el ángulo cuyo arco mide lo mismo que el radio",1],["sen²(x) + cos²(x) = 1 se deduce del teorema de Pitágoras en la circunferencia unitaria",1],["Sumar una constante k a f(x) desplaza su gráfica horizontalmente",0],["Multiplicar f(x) por −1 refleja su gráfica respecto al eje x",1],["Una función estrictamente creciente en su dominio es inyectiva",1],["El límite de f en a describe a qué valor se aproxima f(x) cuando x se acerca a a",1],["Si f(a) no está definida, el límite de f cuando x → a no puede existir",0],["Una función es continua en a si el límite en a coincide con f(a)",1],["Si el discriminante de una cuadrática es negativo, tiene dos raíces reales distintas",0],["En una sucesión aritmética, la razón entre términos consecutivos es constante",0]];
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+let W,H,dpr;
+function resize(){dpr=window.devicePixelRatio||1;W=cv.clientWidth;H=cv.clientHeight;cv.width=W*dpr;cv.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0)}
+addEventListener('resize',resize);resize();
+let best=0;try{best=+localStorage.getItem('caida-best')||0}catch(e){}
+let state='menu',dist,speed,bonus,gates,deck=[],px,lane,vx,t=0,shake=0,parts=[],pops=[],streaks=[],clouds=[],lastBottom,deadT=0,streak=0,finalScore=0;
+const LEN=380,GAP=170;
+const PY=()=>H*0.3;
+const score=()=>Math.floor(dist/10)+bonus;
+function nextQ(){if(!deck.length){deck=Q.map((q,i)=>i);for(let i=deck.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[deck[i],deck[j]]=[deck[j],deck[i]]}}return Q[deck.pop()]}
+function reset(){wob=0;wobV=0;dist=0;speed=170;bonus=0;streak=0;gates=[];parts=[];pops=[];lane=Math.random()<.5?0:1;px=lane?W*.75:W*.25;vx=0;lastBottom=PY();
+streaks=Array.from({length:36},()=>({x:Math.random()*W,y:Math.random()*H,l:20+Math.random()*50,a:.1+Math.random()*.25}));
+clouds=Array.from({length:8},()=>({x:Math.random()*W,y:Math.random()*H,s:.6+Math.random()*1.2}));spawn()}
+function spawn(){while(lastBottom<H*1.8){const q=nextQ(),top=lastBottom+(H-PY())+speed*3.4;gates.push({top,bottom:top+LEN,q:q[0],ans:q[1],done:false});lastBottom=top+LEN}}
+function start(){reset();state='play'}
+function burst(x,y,col,n){for(let i=0;i<n;i++){const a=Math.random()*6.283,s=60+Math.random()*240;parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:.7+Math.random()*.5,col})}}
+function die(){state='dead';deadT=0;shake=.6;finalScore=score();if(finalScore>best){best=finalScore;try{localStorage.setItem('caida-best',best)}catch(e){}}burst(px,PY(),'#ff4d5e',50);burst(px,PY(),'#ffd166',20)}
+let wallPrev=false;
+function setLane(l){if(!wallPrev)lane=l}
+addEventListener('keydown',e=>{const k=e.key.toLowerCase();
+if(k==='arrowleft'||k==='a')setLane(0);else if(k==='arrowright'||k==='d')setLane(1);
+else if(k===' '||k==='enter'){if(state==='menu'||(state==='dead'&&deadT>.6))start()}
+if(['arrowleft','arrowright',' '].includes(k))e.preventDefault()});
+cv.addEventListener('pointerdown',e=>{const r=cv.getBoundingClientRect();
+if(state==='menu'||(state==='dead'&&deadT>.6)){start();return}
+if(state==='play')setLane(e.clientX-r.left<r.width/2?0:1)});
+let wob=0,wobV=0;
+function update(dt){t+=dt;
+const tg=Math.max(-.6,Math.min(.6,-vx*.0016));wobV+=(-90*(wob-tg)-6*wobV)*dt;wob+=wobV*dt;
+if(state==='play'){
+speed=170+Math.min(270,dist/60);dist+=speed*dt;
+const tx=lane?W*.75:W*.25;vx=(tx-px)*9;px+=vx*dt;
+for(const g of gates){g.top-=speed*dt;g.bottom-=speed*dt}
+const wall=gates.some(g=>g.top<PY()+18&&g.bottom>PY()-18);
+if(wall&&!wallPrev)lane=px<W/2?0:1;
+wallPrev=wall;
+if(wall){px=lane?Math.max(px,W/2+28):Math.min(px,W/2-28)}
+lastBottom-=speed*dt;
+gates=gates.filter(g=>g.bottom>-60);spawn();
+for(const g of gates){
+if(!g.done&&g.bottom-40<=PY()+16){g.done=true;
+const ok=(px<W/2?0:1)===(g.ans?0:1);
+if(!ok){die();break}
+streak++;const pts=50+Math.min(streak,10)*5;bonus+=pts;
+pops.push({x:px,y:PY()-30,txt:'+'+pts,life:1});burst(px,PY()+10,'#5df2a0',16)}}
+}
+if(state==='dead'){deadT+=dt;vx*=.9}
+for(const s of streaks){s.y-=(speed||170)*(state==='dead'?.2:1.7)*dt;if(s.y<-s.l){s.y=H+10;s.x=Math.random()*W}}
+for(const c of clouds){c.y-=(speed||170)*.7*c.s*dt*(state==='dead'?.2:1);if(c.y<-80){c.y=H+80;c.x=Math.random()*W}}
+for(const p of parts){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=300*dt;p.life-=dt}parts=parts.filter(p=>p.life>0);
+for(const p of pops){p.y-=40*dt;p.life-=dt}pops=pops.filter(p=>p.life>0);
+shake=Math.max(0,shake-dt)}
+function wrap(s,x,y,mw,lh){const w=s.split(' ');let l='',ls=[];for(const a of w){const tt=l?l+' '+a:a;if(ctx.measureText(tt).width>mw&&l){ls.push(l);l=a}else l=tt}ls.push(l);ls.forEach((q,i)=>ctx.fillText(q,x,y+i*lh))}
+let fps=60;const MONO='monospace';
+function drawBG(){const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#2f7fd8');g.addColorStop(1,'#8ecbff');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+ctx.fillStyle='rgba(255,255,255,.85)';
+for(const c of clouds){const r=22*c.s;ctx.beginPath();ctx.arc(c.x,c.y,r,0,7);ctx.arc(c.x+r*.9,c.y+r*.25,r*.8,0,7);ctx.arc(c.x-r*.9,c.y+r*.3,r*.7,0,7);ctx.fill()}}
+function drawGate(g){
+const cx=W/2,badX=g.ans?W/2:0,by=g.bottom-22;
+ctx.fillStyle='#888';ctx.fillRect(cx-8,g.top,16,g.bottom-g.top);
+ctx.fillStyle='#b22';ctx.fillRect(badX,by,W/2,22);
+ctx.fillStyle='#fff';
+for(let x=badX;x<badX+W/2-1;x+=20){ctx.beginPath();ctx.moveTo(x,by);ctx.lineTo(x+10,by-20);ctx.lineTo(x+20,by);ctx.closePath();ctx.fill()}
+ctx.font='12px '+MONO;ctx.textAlign='center';ctx.fillStyle='#fff';
+ctx.fillText('[V]',W*.25,g.top+20);ctx.fillText('[F]',W*.75,g.top+20);
+ctx.fillStyle='#012';ctx.textAlign='left';ctx.fillText('gate top='+Math.round(g.top),4,g.top+34)}
+function drawPlayer(){const y=PY(),R=16;
+let sy=1+Math.min(.4,(speed||170)/1100),sx=1/sy;
+sx+=Math.min(.25,Math.abs(vx)/1400);sy-=Math.min(.12,Math.abs(vx)/3000);
+if(state==='dead'){sx=1.5;sy=.55}
+ctx.save();ctx.translate(px,y);
+ctx.transform(1,0,wob,1,0,0);ctx.rotate(-wob*.5);ctx.scale(sx,sy);
+ctx.fillStyle=state==='dead'?'#c33':'#ff8c1a';ctx.beginPath();ctx.arc(0,0,R,0,7);ctx.fill();
+ctx.strokeStyle='#8a4300';ctx.lineWidth=2;ctx.stroke();
+ctx.beginPath();ctx.moveTo(-R,0);ctx.lineTo(R,0);ctx.stroke();
+ctx.fillStyle='rgba(255,255,255,.55)';ctx.beginPath();ctx.ellipse(-5,-7,4,3,-.6,0,7);ctx.fill();
+ctx.restore()}
+function hud(){
+const g=gates.find(g=>!g.done);
+ctx.textAlign='left';ctx.fillStyle='#fff';ctx.font='14px '+MONO;
+ctx.fillText('SCORE: '+score(),8,18);ctx.fillText('BEST:  '+best,8,34);
+if(g&&state==='play'){ctx.strokeStyle='#fff';ctx.lineWidth=1;ctx.fillStyle='rgba(0,0,40,.55)';ctx.fillRect(8,44,W-16,71);ctx.fillStyle='#fff';ctx.strokeRect(8.5,44.5,W-17,70);
+ctx.textAlign='center';ctx.font='14px '+MONO;wrap(g.q,W/2,66,W-40,18)}
+ctx.textAlign='left';ctx.font='10px '+MONO;ctx.fillStyle='#012';
+const lines=['fps '+fps.toFixed(0),'state '+state,'dist '+Math.round(dist),'speed '+Math.round(speed),'lane '+lane+' px '+Math.round(px),'wall '+wallPrev,'gates '+gates.length,'streak '+streak,'deck '+deck.length];
+lines.forEach((l,i)=>ctx.fillText(l,8,H-8-(lines.length-1-i)*12));
+ctx.textAlign='right';ctx.fillStyle='#fff';ctx.fillText('DEV BUILD 0.1.4',W-8,H-8)}
+function overlay(title,lines){
+ctx.fillStyle='rgba(0,0,0,.85)';ctx.fillRect(0,0,W,H);ctx.textAlign='center';
+ctx.fillStyle='#f80';ctx.font='bold 22px '+MONO;ctx.fillText(title,W/2,H*.3);
+ctx.fillStyle='#ddd';ctx.font='13px '+MONO;lines.forEach((l,i)=>ctx.fillText(l,W/2,H*.3+34+i*20));
+ctx.fillStyle='#ff0';ctx.fillText('[ESPACIO / CLICK] '+(state==='menu'?'start':'retry'),W/2,H*.3+34+lines.length*20+24)}
+function draw(){
+drawBG();
+if(state!=='menu')for(const g of gates)drawGate(g);
+if(state==='menu'){px=W/2}
+if(state!=='menu'||true)drawPlayer();
+if(state!=='menu')hud();
+if(state==='menu')overlay('CAIDA LIBRE (WIP)',['build experimental - arte placeholder','TODO: sonido, sprites, menu real','','izq = VERDADERO / der = FALSO','mover: flechas o A/D o tap','la pared central es solida','pinchos = game over']);
+if(state==='dead')overlay('GAME OVER',['score='+finalScore,'metros='+Math.floor(dist/10),'best='+best])}
+let last=performance.now();
+function loop(n){const dt=Math.min(.05,(n-last)/1000);last=n;fps=fps*.9+.1/Math.max(dt,.001);update(dt);draw();requestAnimationFrame(loop)}
+reset();requestAnimationFrame(loop);
+</script></body></html>
